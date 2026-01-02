@@ -21,6 +21,7 @@ const translations = {
     appTimerDesc: "设置指定时间后自动关闭选中的应用",
     countdown: "倒计时",
     minute: "分钟",
+    hour: "小时",
     shutdownAfter: "关闭后同时关机",
     startTimer: "启动定时",
     cancel: "取消",
@@ -34,7 +35,7 @@ const translations = {
     restart: "重启",
     sleep: "休眠",
     pleaseSelect: "请先选择一个应用！",
-    invalidTime: "请输入有效的分钟数！",
+    invalidTime: "请输入有效的时间！",
     switchToLight: "切换浅色",
     switchToDark: "切换深色",
     refresh: "刷新"
@@ -49,6 +50,7 @@ const translations = {
     appTimerDesc: "Automatically close the selected app after a set time",
     countdown: "Countdown",
     minute: "min",
+    hour: "hour",
     shutdownAfter: "Shutdown system after app closes",
     startTimer: "Start",
     cancel: "Cancel",
@@ -62,7 +64,7 @@ const translations = {
     restart: "Restart",
     sleep: "Sleep",
     pleaseSelect: "Please select an app first!",
-    invalidTime: "Please enter a valid number!",
+    invalidTime: "Please enter a valid time!",
     switchToLight: "Switch to Light Mode",
     switchToDark: "Switch to Dark Mode",
     refresh: "Refresh"
@@ -75,7 +77,9 @@ function App() {
   const [apps, setApps] = useState<ProcessInfo[]>([]);
   const [selectedApp, setSelectedApp] = useState<ProcessInfo | null>(null);
   const [appMinutes, setAppMinutes] = useState("30");
-  const [sysMinutes, setSysMinutes] = useState("60");
+  const [appHours, setAppHours] = useState("0");
+  const [sysMinutes, setSysMinutes] = useState("0");
+  const [sysHours, setSysHours] = useState("1");
   const [sysAction, setSysAction] = useState("shutdown"); // 存储英文 key
   const [shutdownAfter, setShutdownAfter] = useState(false);
   const [appTimer, setAppTimer] = useState(0);
@@ -84,8 +88,8 @@ function App() {
   const [sysStatus, setSysStatus] = useState("");
   const [loading, setLoading] = useState(true);
   const [isDark, setIsDark] = useState(false);
-  const [lang, setLang] = useState<Language>('zh'); // 默认一种语言，初始化在 useEffect 中检测
-  
+  const [lang, setLang] = useState<Language>('zh');
+
   const appIntervalRef = useRef<number | null>(null);
   const sysIntervalRef = useRef<number | null>(null);
 
@@ -122,10 +126,7 @@ function App() {
 
   useEffect(() => {
     loadApps();
-    
-    // 监听窗口变化事件
     let unlisten: (() => void) | undefined;
-    
     import('@tauri-apps/api/event').then(({ listen }) => {
       listen('window-changed', () => {
         loadApps();
@@ -133,10 +134,7 @@ function App() {
         unlisten = fn;
       });
     });
-    
-    // 备用：每 30 秒刷新一次（以防事件丢失）
     const interval = setInterval(loadApps, 30000);
-    
     return () => {
       clearInterval(interval);
       if (unlisten) unlisten();
@@ -148,12 +146,15 @@ function App() {
       alert(t('pleaseSelect'));
       return;
     }
-    const mins = parseFloat(appMinutes);
-    if (isNaN(mins) || mins <= 0) {
+    const mins = parseFloat(appMinutes) || 0;
+    const hours = parseFloat(appHours) || 0;
+    const totalMinutes = hours * 60 + mins;
+
+    if (totalMinutes <= 0) {
       alert(t('invalidTime'));
       return;
     }
-    setAppTimer(Math.floor(mins * 60));
+    setAppTimer(Math.floor(totalMinutes * 60));
     setAppStatus("");
     
     appIntervalRef.current = setInterval(() => {
@@ -187,12 +188,15 @@ function App() {
   };
 
   const startSysTimer = () => {
-    const mins = parseFloat(sysMinutes);
-    if (isNaN(mins) || mins <= 0) {
+    const mins = parseFloat(sysMinutes) || 0;
+    const hours = parseFloat(sysHours) || 0;
+    const totalMinutes = hours * 60 + mins;
+    
+    if (totalMinutes <= 0) {
       alert(t('invalidTime'));
       return;
     }
-    setSysTimer(Math.floor(mins * 60));
+    setSysTimer(Math.floor(totalMinutes * 60));
     setSysStatus("");
     
     sysIntervalRef.current = setInterval(() => {
@@ -220,12 +224,16 @@ function App() {
   };
 
   const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
+    
+    if (h > 0) {
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // 从窗口标题提取应用名称
   const getAppDisplayName = (app: ProcessInfo) => {
     const title = app.title;
     const processName = app.name.toLowerCase();
@@ -234,7 +242,6 @@ function App() {
       return app.name.replace('.exe', '').replace('.EXE', '');
     }
     
-    // 常见浏览器 - 标题格式通常是 "网页标题 - 浏览器名"
     const browsers: Record<string, string> = {
       'chrome': 'Google Chrome',
       'msedge': 'Microsoft Edge',
@@ -249,7 +256,6 @@ function App() {
       }
     }
     
-    // 其他应用：如果标题包含分隔符，取第一部分
     const separators = [' - ', ' — ', ' | ', ' · '];
     for (const sep of separators) {
       if (title.includes(sep)) {
@@ -262,7 +268,6 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* 侧边栏 */}
       <aside className="sidebar">
         <div className="sidebar-header">
           <h2>{t('runningApps')}</h2>
@@ -308,15 +313,12 @@ function App() {
         </div>
       </aside>
       
-      {/* 主区域 */}
       <main className="main-content">
-        {/* 头部信息 - 固定高度 */}
         <div className="header-section">
           <h1>{selectedApp ? getAppDisplayName(selectedApp) : t('appName')}</h1>
           <p className="header-subtitle">{selectedApp ? selectedApp.title : t('selectAppHint')}</p>
         </div>
         
-        {/* 应用定时卡片 */}
         <div className="card">
           <div className="card-header">
             <div className="card-icon blue">
@@ -335,18 +337,29 @@ function App() {
             <div className="form-row">
               <div className="form-group">
                 <label>{t('countdown')}</label>
-                <div className="input-with-suffix">
-                  <input 
-                    type="number"
-                    value={appMinutes}
-                    onChange={e => setAppMinutes(e.target.value)}
-                    min="1"
-                  />
-                  <span>{t('minute')}</span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div className="input-with-suffix" style={{ width: '120px' }}>
+                    <input 
+                      type="number"
+                      value={appHours}
+                      onChange={e => setAppHours(e.target.value)}
+                      min="0"
+                    />
+                    <span>{t('hour')}</span>
+                  </div>
+                  <div className="input-with-suffix" style={{ width: '120px' }}>
+                    <input 
+                      type="number"
+                      value={appMinutes}
+                      onChange={e => setAppMinutes(e.target.value)}
+                      min="0"
+                    />
+                    <span>{t('minute')}</span>
+                  </div>
                 </div>
               </div>
               
-              <label className="checkbox-label">
+              <label className="checkbox-label" style={{ marginTop: '24px' }}>
                 <input 
                   type="checkbox"
                   checked={shutdownAfter}
@@ -379,7 +392,6 @@ function App() {
           </div>
         </div>
         
-        {/* 系统定时卡片 */}
         <div className="card">
           <div className="card-header">
             <div className="card-icon red">
@@ -410,14 +422,25 @@ function App() {
               
               <div className="form-group">
                 <label>{t('countdown')}</label>
-                <div className="input-with-suffix">
-                  <input 
-                    type="number"
-                    value={sysMinutes}
-                    onChange={e => setSysMinutes(e.target.value)}
-                    min="1"
-                  />
-                  <span>{t('minute')}</span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <div className="input-with-suffix" style={{ width: '120px' }}>
+                    <input 
+                      type="number"
+                      value={sysHours}
+                      onChange={e => setSysHours(e.target.value)}
+                      min="0"
+                    />
+                    <span>{t('hour')}</span>
+                  </div>
+                  <div className="input-with-suffix" style={{ width: '120px' }}>
+                    <input 
+                      type="number"
+                      value={sysMinutes}
+                      onChange={e => setSysMinutes(e.target.value)}
+                      min="0"
+                    />
+                    <span>{t('minute')}</span>
+                  </div>
                 </div>
               </div>
             </div>

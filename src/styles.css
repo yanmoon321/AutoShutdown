@@ -335,6 +335,7 @@ body {
 .input-with-suffix span {
   color: var(--text-muted);
   font-size: 13px;
+  white-space: nowrap; /* 防止换行 */
 }
 
 input[type="number"],
