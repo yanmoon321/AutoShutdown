@@ -38,7 +38,8 @@ const translations = {
     invalidTime: "请输入有效的时间！",
     switchToLight: "切换浅色",
     switchToDark: "切换深色",
-    refresh: "刷新"
+    refresh: "刷新",
+    appExited: "应用已退出，任务取消"
   },
   en: {
     runningApps: "Running Apps",
@@ -67,7 +68,8 @@ const translations = {
     invalidTime: "Please enter a valid time!",
     switchToLight: "Switch to Light Mode",
     switchToDark: "Switch to Dark Mode",
-    refresh: "Refresh"
+    refresh: "Refresh",
+    appExited: "App exited, task cancelled"
   }
 };
 
@@ -140,6 +142,17 @@ function App() {
       if (unlisten) unlisten();
     };
   }, []);
+
+  // 监听应用列表变化，如果目标应用退出，则取消定时
+  useEffect(() => {
+    if (appTimer > 0 && selectedApp && !loading && apps.length > 0) {
+      const isRunning = apps.some(app => app.pid === selectedApp.pid);
+      if (!isRunning) {
+        cancelAppTimer();
+        setAppStatus(t('appExited'));
+      }
+    }
+  }, [apps, appTimer, selectedApp, loading]);
 
   const startAppTimer = () => {
     if (!selectedApp) {
