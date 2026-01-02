@@ -147,8 +147,7 @@ fn get_process_icon(exe_path: &str) -> Option<String> {
 #[cfg(windows)]
 #[tauri::command]
 fn get_running_apps() -> Vec<ProcessInfo> {
-    use std::ffi::OsString;
-    use std::os::windows::ffi::OsStringExt;
+
     
     let windows_data: Mutex<Vec<WindowInfo>> = Mutex::new(Vec::new());
     
