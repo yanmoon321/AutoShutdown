@@ -207,14 +207,20 @@ body {
   flex: 1;
   padding: 28px 36px;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-width: 0;
   background: var(--bg-primary);
   transition: background-color 0.3s;
 }
 
 .header-section {
-  height: 72px;
-  min-height: 72px;
+  height: 88px; /* 增加高度以容纳两行文字 (24+4 + 14*1.5*2 ≈ 70px + 余量) */
+  min-height: 88px;
   margin-bottom: 20px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* 垂直居中，这样只有一行时也不会太怪 */
 }
 
 .header-section h1 {
@@ -225,14 +231,25 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .header-subtitle {
   font-size: 14px;
   color: var(--text-secondary);
-  /* white-space: nowrap; */
+  line-height: 1.5;
+  
+  /* 多行省略核心代码 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* 限制为 2 行 */
+  line-clamp: 2; /* 标准属性 */
+  -webkit-box-orient: vertical;
+  
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
+  white-space: normal; /* 允许换行 */
+  word-break: break-word; /* 防止长单词撑开 */
 }
 
 /* ========== 卡片 ========== */
